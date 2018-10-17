@@ -25,7 +25,7 @@ public class EntryPoint implements Quit.Command {
 
     @ShellMethod("Connect to the moysklad")
     public void connect(String host, String username, String password) {
-        LognexApi api = new LognexApi(host, username, password);
+        LognexApi api = new LognexApi(host, false, username, password);
         isConnected = true;
         ConnectionDetails connectionDetails = new ConnectionDetails(api, host);
         publisher.sendLogInEvent(connectionDetails);

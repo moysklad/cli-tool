@@ -14,7 +14,7 @@
         <spring.boot.version>2.0.5.RELEASE</spring.boot.version>
         <spring.boot.maven.plugin>2.0.5.RELEASE</spring.boot.maven.plugin>
         <spring.shell.version>2.0.0.RELEASE</spring.shell.version>
-        <remap.sdk.version>2.0-ALPHA7.0.2</remap.sdk.version>
+        <remap.sdk.version>2.0-ALPHA7.2</remap.sdk.version>
     </properties>
 
     <dependencyManagement>
