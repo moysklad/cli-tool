@@ -31,6 +31,14 @@ public class EntryPoint implements Quit.Command {
         publisher.sendLogInEvent(connectionDetails);
     }
 
+    @ShellMethod("Logout")
+    public void logout() {
+        isConnected = false;
+        layerSelected = false;
+        publisher.sendLayerSelected(null);
+        publisher.sendLogInEvent(null);
+    }
+
     @ShellMethod("Select the layer")
     public void layer(String layer) {
         Layer _layer = Layer.silentValueOf(layer);
@@ -60,8 +68,8 @@ public class EntryPoint implements Quit.Command {
         }
     }
 
-    @ShellMethodAvailability(value = "layer")
-    public Availability layerCheck() {
+    @ShellMethodAvailability({"layer", "logout"})
+    public Availability needConnectCheck() {
         return isConnected
                 ? Availability.available()
                 : Availability.unavailable("you need to connect");

@@ -1,13 +1,13 @@
 package com.lognex.api.cli.commands.assortment;
 
 import com.lognex.api.LognexApi;
+import com.lognex.api.cli.commands.ThrowingBiFunction;
+import com.lognex.api.cli.commands.ThrowingConsumer;
 import com.lognex.api.cli.events.ConnectionEvent;
 import com.lognex.api.clients.ProductClient;
 import com.lognex.api.clients.ProductFolderClient;
 import com.lognex.api.clients.ServiceClient;
-import com.lognex.api.entities.ProductFolderEntity;
-import com.lognex.api.entities.products.ProductEntity;
-import com.lognex.api.entities.products.ServiceEntity;
+import com.lognex.api.entities.MetaEntity;
 import com.lognex.api.responses.ListEntity;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -26,21 +26,18 @@ public class AssortmentService {
     public void archiveAssortment() {
         try {
             System.out.println("Archiving assortment is started");
-            ListEntity<ProductFolderEntity> folders = productFolderClient.get();
-            for (ProductFolderEntity folder : folders.getRows()) {
+            performAll((offset, limit) -> productFolderClient.get(offset, limit), folder -> {
                 folder.setArchived(true);
                 productFolderClient.put(folder);
-            }
-            ListEntity<ProductEntity> products = productClient.get();
-            for (ProductEntity product : products.getRows()) {
+            });
+            performAll((offset, limit) -> productClient.get(offset, limit), product -> {
                 product.setArchived(true);
                 productClient.put(product);
-            }
-            ListEntity<ServiceEntity> services = serviceClient.get();
-            for (ServiceEntity service : services.getRows()) {
+            });
+            performAll((offset, limit) -> serviceClient.get(offset, limit), service -> {
                 service.setArchived(true);
                 serviceClient.put(service);
-            }
+            });
             System.out.println("Archiving assortment is finished");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -54,21 +51,19 @@ public class AssortmentService {
             List<String> filterExpressions = new ArrayList<>();
             filterExpressions.add("archived=true");
 
-            ListEntity<ProductFolderEntity> folders = productFolderClient.get(filterExpressions);
-            for (ProductFolderEntity folder : folders.getRows()) {
+            performAll((offset, limit) -> productFolderClient.get(offset, limit, filterExpressions), folder -> {
                 folder.setArchived(false);
                 productFolderClient.put(folder);
-            }
-            ListEntity<ProductEntity> products = productClient.get(filterExpressions);
-            for (ProductEntity product : products.getRows()) {
+            });
+            performAll((offset, limit) -> productClient.get(offset, limit, filterExpressions), product -> {
                 product.setArchived(false);
                 productClient.put(product);
-            }
-            ListEntity<ServiceEntity> services = serviceClient.get(filterExpressions);
-            for (ServiceEntity service : services.getRows()) {
+            });
+            performAll((offset, limit) -> serviceClient.get(offset, limit, filterExpressions), service -> {
                 service.setArchived(false);
                 serviceClient.put(service);
-            }
+            });
+
             System.out.println("Unarchiving all assortment is finished");
 
         } catch (Exception ex) {
@@ -83,18 +78,18 @@ public class AssortmentService {
             filterExpressions.add("archived=true");
             filterExpressions.add("archived=false");
 
-            ListEntity<ProductFolderEntity> folders = productFolderClient.get(filterExpressions);
-            for (ProductFolderEntity folder : folders.getRows()) {
-                productFolderClient.delete(folder.getId());
-            }
-            ListEntity<ProductEntity> products = productClient.get(filterExpressions);
-            for (ProductEntity product : products.getRows()) {
-                productClient.delete(product.getId());
-            }
-            ListEntity<ServiceEntity> services = serviceClient.get(filterExpressions);
-            for (ServiceEntity service : services.getRows()) {
-                serviceClient.delete(service.getId());
-            }
+            performAll(
+                    (offset, limit) -> productFolderClient.get(offset, limit, filterExpressions),
+                    folder -> productFolderClient.delete(folder.getId())
+            );
+            performAll(
+                    (offset, limit) -> productClient.get(offset, limit, filterExpressions),
+                    product -> productClient.delete(product.getId())
+            );
+            performAll(
+                    (offset, limit) -> serviceClient.get(offset, limit, filterExpressions),
+                    service -> serviceClient.delete(service.getId())
+            );
             System.out.println("Deleting all assortment is finished");
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -102,11 +97,34 @@ public class AssortmentService {
 
     }
 
+    private <T extends MetaEntity> void performAll(ThrowingBiFunction<Integer, Integer, ListEntity<T>, Exception> extract,
+                                                   ThrowingConsumer<T, Exception> perform) throws Exception {
+        final int limit = 100;
+        int offset = 0;
+
+        ListEntity<T> list;
+        do {
+            list = extract.accept(offset, limit);
+            for (T entity : list.getRows()) {
+                perform.accept(entity);
+            }
+            offset += limit;
+        } while(list.getMeta().getSize() >= offset);
+
+    }
+
     @EventListener
     public void connectionHandle(ConnectionEvent event) {
-        LognexApi api = event.getConnectionDetails().getApi();
-        productFolderClient = new ProductFolderClient(api);
-        productClient = new ProductClient(api);
-        serviceClient = new ServiceClient(api);
+        if(event.getConnectionDetails() == null) {
+            productFolderClient = null;
+            productClient = null;
+            serviceClient = null;
+        } else {
+            LognexApi api = event.getConnectionDetails().getApi();
+            productFolderClient = new ProductFolderClient(api);
+            productClient = new ProductClient(api);
+            serviceClient = new ServiceClient(api);
+        }
+
     }
 }

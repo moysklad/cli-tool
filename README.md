@@ -8,6 +8,7 @@ The command-line tool for moysklad's entities manipulation via remap 1.1.
 2. Connect to the Moysklad `connect online.moysklad.ru admin@loging password`
 3. Select a layer `layer assortment`
 4. Execute some command `delete`
+5. Logout `logout`
 
 ## Layers
 The layer defines a list of operation over specific entities or a entity.
